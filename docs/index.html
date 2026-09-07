@@ -461,7 +461,7 @@ w_back:"← Start over",w_conf_t:"Confirm your colors",
 w_conf_l:"Extracted from your logo. These exact files go in your download pack.",
 w_conf_r:"Suggested palette, sampled from your pixels. Click a chip to adjust, then confirm.",
 w_persona:"Palette personality",w_addcolor:"+ Add a color",w_go:"Looks right, start creating →",
-w_assets:"Download assets only",w_diff:"← Different logo",w_primary:"primary",
+w_assets:"Download assets only",w_diff:"← Different logo",w_primary:"primary",role_brand:"brand",role_ink:"ink",role_surface:"surface",role_background:"background",role_custom:"custom",
 cap_logo:"original",cap_logo_white:"white variant",cap_mark:"mark",cap_mark_white:"mark white",cap_app_badge:"app badge",
 w_desc_t:"Describe the brand",w_name:"Brand name",w_name_ph:"e.g. Terra",
 w_desc:"What does it do? Who is it for?",w_desc_ph:"Specialty coffee roastery for young professionals in Riyadh",
@@ -530,7 +530,7 @@ w_back:"→ ابدأ من جديد",w_conf_t:"اعتمد ألوانك",
 w_conf_l:"استخرجت من شعارك. هذه الملفات نفسها في حزمة التحميل.",
 w_conf_r:"لوحة مقترحة من ألوان شعارك. اضغط أي لون لتعديله ثم اعتمد.",
 w_persona:"شخصية الألوان",w_addcolor:"+ أضف لونا",w_go:"تبدو صحيحة، ابدأ الإنشاء ←",
-w_assets:"حمل الملفات فقط",w_diff:"→ شعار مختلف",w_primary:"أساسي",
+w_assets:"حمل الملفات فقط",w_diff:"→ شعار مختلف",w_primary:"أساسي",role_brand:"العلامة",role_ink:"داكن",role_surface:"سطح",role_background:"خلفية",role_custom:"إضافي",
 cap_logo:"الأصل",cap_logo_white:"نسخة بيضاء",cap_mark:"الرمز",cap_mark_white:"رمز أبيض",cap_app_badge:"أيقونة التطبيق",
 w_desc_t:"صف العلامة",w_name:"اسم العلامة",w_name_ph:"مثال: واحة",
 w_desc:"ماذا تقدم؟ ولمن؟",w_desc_ph:"محمصة قهوة مختصة للشباب في الرياض",
@@ -630,7 +630,7 @@ async function upload(f){
     const r=await fetch(API+"/extract",{method:"POST",body:fd});
     const j=await r.json();
     if(!j.ok){goUpload();err(j.error||t("e_extract"));return}
-    state.pack=j.pack_id; state.palette=j.palette; state.primary=j.primary;
+    state.pack=j.pack_id; state.palette=j.palette; state.roles=j.roles||[]; state.primary=j.primary;
     confirmStage(j);
   }catch(e){goUpload();err(t("e_server"))}
   finally{state.busy=false}
@@ -666,18 +666,20 @@ function confirmStage(j){
 function renderSw(){
   const sw=$("#sw"); sw.innerHTML="";
   state.palette.forEach((h,i)=>{
+    const role=(state.roles&&state.roles[i])||"brand";
+    const label=i===0?t("w_primary"):t("role_"+role);
     const d=document.createElement("div"); d.className="swatch";
     d.innerHTML=`<span class="chip"><input type="color" value="${h}" aria-label="edit color ${h}"></span>
-      <code>${h}</code>${i===0?`<span class="tag">${t("w_primary")}</span>`:'<button class="del" title="remove" aria-label="remove color">×</button>'}`;
+      <code>${h}</code><span class="tag"${i===0?"":' style="color:var(--mut)"'}>${label}</span>${i===0?'':'<button class="del" title="remove" aria-label="remove color" style="margin-inline-start:10px">×</button>'}`;
     d.querySelector("input").addEventListener("input",e=>{state.palette[i]=e.target.value.toUpperCase();d.querySelector("code").textContent=state.palette[i];updPersona()});
     const del=d.querySelector(".del");
-    if(del)del.addEventListener("click",()=>{state.palette.splice(i,1);renderSw()});
+    if(del)del.addEventListener("click",()=>{state.palette.splice(i,1);if(state.roles)state.roles.splice(i,1);renderSw()});
     sw.appendChild(d);
   });
   updPersona();
 }
 function updPersona(){const p=$("#personaLine");if(p)p.textContent=t("w_persona")+": "+persona(state.palette)}
-function addSwatch(h){if(state.palette.length<6){state.palette.push(h);renderSw()}}
+function addSwatch(h){if(state.palette.length<6){state.palette.push(h);(state.roles=state.roles||[]).push("custom");renderSw()}}
 
 async function launchLogoJob(extra,btn){
   if(state.busy)return;

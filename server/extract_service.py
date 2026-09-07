@@ -396,7 +396,7 @@ def extract():
         for fn in os.listdir(out):
             z.write(os.path.join(out, fn), arcname="brand-assets/" + fn)
 
-    return jsonify(ok=True, pack_id=pid, palette=meta["palette"], primary=meta["primary"],
+    return jsonify(ok=True, pack_id=pid, palette=meta["palette"], roles=meta.get("roles"), primary=meta["primary"],
                    note=meta.get("note", ""), previews=previews,
                    download="/api/pack/%s.zip" % pid)
 
