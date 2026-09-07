@@ -1,23 +1,21 @@
-# Brand Studio — brand.sadaorg.com
+# Brand Studio
 
-The website and backend behind [brand.sadaorg.com](https://brand.sadaorg.com): upload a logo, get a whole brand. Bilingual Arabic and English.
+The source of [brand.sadaorg.com](https://brand.sadaorg.com): upload a logo, get a whole brand. Arabic and English.
 
-## Layout
+## Want this in Claude Code?
 
+Install the skill and build full 40 page brand guidelines from your terminal:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/AbdulkareemKR/brand-identity-generator/main/install.sh | bash
 ```
-docs/     the site (static, served by nginx)
-server/   Flask backend: extraction, gpt-image-1 generation jobs,
-          guideline deck builder, Moyasar paywall
-examples/ the Terra demo brand
-```
 
-## Deploy
+Then say: `create a brand identity for my coffee shop "terra"`
 
-- Static: rsync `docs/` to `/var/www/brand`
-- Backend: rsync `server/` to `/opt/brand-extract`, then `systemctl reload brand-extract`
-- Env (`/opt/brand-extract/.env`): `OPENAI_API_KEY`, `MOYASAR_SK`, `CHROME_BIN=google-chrome`, `IMAGE_QUALITY=medium`
+Skill repo: [brand-identity-generator](https://github.com/AbdulkareemKR/brand-identity-generator)
 
-The Claude Code skill that powers the method lives in
-[brand-identity-generator](https://github.com/AbdulkareemKR/brand-identity-generator).
+## What is here
+
+`docs/` the site · `server/` the backend · `examples/` the Terra demo brand
 
 MIT.
