@@ -67,6 +67,31 @@ def build_deck(job_dir, name, palette, out_dir=None, preview_only=False):
     mint = _tint(accent, 0.85)
     eyebrow = accent if _luma(accent) < 170 else dark
 
+    # palette-derived brand personality: drives the values words + slider dots.
+    # 0 = left extreme, 1 = right extreme on each axis.
+    def _pp(hexc):
+        h = hexc.lstrip("#")
+        return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    _n = len(pal)
+    _warm = sum(_pp(c)[0] - _pp(c)[2] for c in pal) / _n / 128.0        # -1..1
+    _sat = sum(max(_pp(c)) - min(_pp(c)) for c in pal) / _n / 128.0     # 0..~1.6
+    _dark2 = 1 - sum(_luma(c) for c in pal) / _n / 255.0                # 0..1
+    _clamp = lambda v: max(0.08, min(0.92, v))
+    sliders = [
+        ("Casual", "Formal",     _clamp(_dark2 * .6 + (1 - min(_sat, 1)) * .4)),
+        ("Warm", "Cool",         _clamp(.5 - _warm * .5)),
+        ("Playful", "Serious",   _clamp(_dark2 * .7 + (1 - min(_sat, 1)) * .3)),
+        ("Simple", "Expressive", _clamp(min(_sat, 1))),
+        ("Youthful", "Established", _clamp(_dark2)),
+        ("Accessible", "Technical", _clamp(.25 + _dark2 * .5 - _warm * .25)),
+    ]
+    _vpool = []
+    _vpool.append("Community" if _warm > .1 else ("Precision" if _warm < -.1 else "Authenticity"))
+    _vpool.append("Impact" if _sat > .8 else ("Innovation" if _sat > .35 else "Clarity"))
+    _vpool.append("Trust" if _dark2 > .5 else "Optimism")
+    _vpool.append("Craft")
+    values_words = _vpool[:4]
+
     A = os.path.join(job_dir, "assets")
     def asset(fn):
         p = os.path.join(A, fn)
@@ -128,7 +153,7 @@ def build_deck(job_dir, name, palette, out_dir=None, preview_only=False):
         </div>{wm if w else ''}</div>"""
 
     def contents(w=False):
-        items = ["01 Logo", "02 Color", "03 Typography", "04 Applications", "05 Thank you"]
+        items = ["01 Brand", "02 Logo", "03 Color", "04 Typography", "05 Applications", "06 Thank you"]
         lis = "".join(f'<div style="display:flex;gap:26px;align-items:baseline;padding:17px 0;border-bottom:1px solid {mint}"><span class="sora" style="color:{accent};font-weight:800;font-size:22px">{i.split()[0]}</span><span style="font-size:24px;font-weight:600" class="sora">{i.split(maxsplit=1)[1]}</span></div>' for i in items)
         return f"""<div class="slide" style="padding:80px 110px">
         <div class="eyebrow">Overview</div>
@@ -199,6 +224,79 @@ def build_deck(job_dir, name, palette, out_dir=None, preview_only=False):
         </div>
         <span class="pg">{pg}</span>{wm if w else ''}</div>"""
 
+    def values(pg, w=False):
+        rows = ""
+        for i, wd in enumerate(values_words):
+            col = accent if i % 2 == 0 else dark
+            rows += f'<div class="sora" style="font-size:92px;font-weight:800;line-height:.95;color:{col};letter-spacing:-.02em">{wd}</div>'
+        return f"""<div class="slide" style="padding:70px 110px">
+        <div class="eyebrow">Brand values</div>
+        <h1 style="font-size:44px;margin:12px 0 6px">What {safe_name} stands for</h1>
+        <p style="font-size:15px;opacity:.75;max-width:56ch;font-weight:300">Read from the identity itself: these four words steer every design and copy decision that follows.</p>
+        <div style="margin-top:26px">{rows}</div>
+        <span class="pg">{pg}</span>{wm if w else ''}</div>"""
+
+    def _slider_row(l, r, v):
+        x = 40 + v * 520
+        return f"""<div style="display:flex;align-items:center;gap:18px;margin:17px 0">
+          <span style="width:130px;text-align:right;font-size:14px;font-weight:600">{l}</span>
+          <svg width="600" height="26" viewBox="0 0 600 26" preserveAspectRatio="none" style="flex:none">
+            <path d="M0 13 C 50 2, 100 24, 150 13 S 250 2, 300 13 S 400 24, 450 13 S 550 2, 600 13" stroke="{mint}" stroke-width="2.5" fill="none"/>
+            <circle cx="{x:.0f}" cy="13" r="8" fill="{accent}"/>
+          </svg>
+          <span style="width:130px;font-size:14px;font-weight:600;opacity:.65">{r}</span>
+        </div>"""
+
+    def personality(pg, w=False):
+        rows = "".join(_slider_row(l, r, v) for l, r, v in sliders[:4])
+        return f"""<div class="slide" style="padding:70px 110px">
+        <div class="eyebrow">Brand personality</div>
+        <h1 style="font-size:44px;margin:12px 0 6px">How {safe_name} feels</h1>
+        <p style="font-size:15px;opacity:.75;max-width:56ch;font-weight:300">Each dot marks where the brand sits between two extremes. Hold these positions across every touchpoint.</p>
+        <div style="margin-top:30px">{rows}</div>
+        <span class="pg">{pg}</span>{wm if w else ''}</div>"""
+
+    def voice(pg, w=False):
+        rows = "".join(_slider_row(l, r, v) for l, r, v in
+                       [sliders[0], sliders[1], sliders[2], sliders[5]])
+        return f"""<div class="slide" style="padding:70px 110px">
+        <div class="eyebrow">Brand voice</div>
+        <h1 style="font-size:44px;margin:12px 0 6px">How {safe_name} speaks</h1>
+        <p style="font-size:15px;opacity:.75;max-width:56ch;font-weight:300">Write like a person, not a press release. Short sentences. Say the thing. The dots below set the register for every caption, post, and page.</p>
+        <div style="margin-top:30px">{rows}</div>
+        <span class="pg">{pg}</span>{wm if w else ''}</div>"""
+
+    def logo_rules(pg, w=False):
+        donts = ["Do not stretch or squash it", "Do not recolor it outside the palette",
+                 "Do not add shadows or effects", "Do not crowd it, keep the clear space"]
+        cards = "".join(f'<div style="border:1px solid {mint};border-radius:14px;padding:18px;background:#FDFCFA"><div style="font-size:22px;color:{accent};font-weight:800" class="sora">✕</div><p style="font-size:13.5px;opacity:.8;font-weight:300;margin-top:6px">{d}</p></div>' for d in donts)
+        return f"""<div class="slide" style="padding:70px 110px">
+        <div class="eyebrow">Logo usage</div>
+        <h1 style="font-size:44px;margin:12px 0 6px">Using the mark</h1>
+        <p style="font-size:15px;opacity:.75;max-width:60ch;font-weight:300">Clear space on every side equals the height of the tallest letter. Minimum size 24 px on screen, 8 mm in print. When in doubt, give it more room.</p>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:34px">{cards}</div>
+        <div style="margin-top:26px;display:grid;place-items:center;border:1.5px dashed {mint};border-radius:14px;padding:24px"><img src="{logo}" style="max-height:90px;max-width:300px;object-fit:contain"></div>
+        <span class="pg">{pg}</span>{wm if w else ''}</div>"""
+
+    def color_roles(pg, w=False):
+        light = _tint(accent, 0.9)
+        roles = [(pal[0] if pal else accent, "Lead", "Hero moments, actions, the mark"),
+                 (dark, "Ground", "Backgrounds, long text, weight"),
+                 (light, "Air", "Page fields, cards, breathing room")]
+        cards = ""
+        for c, role, use in roles:
+            tcol = "#FFFFFF" if _luma(c) < 150 else dark
+            cards += f"""<div style="background:{c};border-radius:16px;padding:24px;min-height:190px;display:flex;flex-direction:column;justify-content:flex-end;border:1px solid {mint}">
+              <div class="sora" style="color:{tcol};font-weight:800;font-size:22px">{role}</div>
+              <p style="color:{tcol};opacity:.85;font-size:13px;font-weight:300">{use}</p>
+              <div class="sora" style="color:{tcol};opacity:.7;font-size:12px;margin-top:6px">{c}</div></div>"""
+        return f"""<div class="slide" style="padding:70px 110px">
+        <div class="eyebrow">Color usage</div>
+        <h1 style="font-size:44px;margin:12px 0 6px">Every color has a job</h1>
+        <p style="font-size:15px;opacity:.75;max-width:58ch;font-weight:300">Never let an accent become a background, and never set long text in the lead color. Contrast first, decoration second.</p>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px">{cards}</div>
+        <span class="pg">{pg}</span>{wm if w else ''}</div>"""
+
     def unlock():
         return f"""<div class="slide divider" style="display:grid;place-items:center">
         <div style="text-align:center;max-width:640px">
@@ -215,22 +313,38 @@ def build_deck(job_dir, name, palette, out_dir=None, preview_only=False):
           <div style="color:{accent};font-size:14px;letter-spacing:.2em;margin-top:8px" class="sora">{safe_name} · MADE AT BRAND.SADAORG.COM</div>
         </div></div>"""
 
-    # ---- full deck ----
-    full_slides = [cover(), contents(), div_slide("01", "Logo", "03"), logo_suite("04"),
-                   div_slide("02", "Color", "05"), colors("06"),
-                   div_slide("03", "Typography", "07"), typography("08"),
-                   div_slide("04", "Applications", "09")]
-    pg = 10
-    for _, title, cap, img in mocks:
-        full_slides.append(app_page(title, cap, img, "%02d" % pg)); pg += 1
-    full_slides.append(thanks())
+    # ---- assembly with automatic page numbers ----
+    def assemble(entries):
+        out = []
+        for i, fn in enumerate(entries, 1):
+            out.append(fn("%02d" % i))
+        return out
 
-    # ---- preview: watermarked cover, contents, logo, colors, ONE application, unlock ----
-    prev_slides = [cover(True), contents(True), logo_suite("03", True), colors("04", True)]
+    # full: complete structure with section dividers
+    full_entries = [lambda pg: cover(), lambda pg: contents(),
+                    lambda pg: div_slide("01", "Brand", pg), values, personality, voice,
+                    lambda pg: div_slide("02", "Logo", pg), logo_suite, logo_rules,
+                    lambda pg: div_slide("03", "Color", pg), colors, color_roles,
+                    lambda pg: div_slide("04", "Typography", pg), typography,
+                    lambda pg: div_slide("05", "Applications", pg)]
+    for _, ti, cap, img in mocks:
+        full_entries.append(lambda pg, ti=ti, cap=cap, img=img: app_page(ti, cap, img, pg))
+    full_entries.append(lambda pg: thanks())
+    full_slides = assemble(full_entries)
+
+    # preview: every zero-cost knowledge page (brand story, personality, voice,
+    # logo usage, colors and roles, typography) watermarked + the one sample
+    # application + the unlock pitch
+    prev_entries = [lambda pg: cover(True), lambda pg: contents(True),
+                    lambda pg: values(pg, True), lambda pg: personality(pg, True),
+                    lambda pg: voice(pg, True), lambda pg: logo_suite(pg, True),
+                    lambda pg: logo_rules(pg, True), lambda pg: colors(pg, True),
+                    lambda pg: color_roles(pg, True), lambda pg: typography(pg, True)]
     if mocks:
-        _, t, c2, img = mocks[0]
-        prev_slides.append(app_page(t, c2, img, "05", True))
-    prev_slides.append(unlock())
+        _, ti, cap, img = mocks[0]
+        prev_entries.append(lambda pg, ti=ti, cap=cap, img=img: app_page(ti, cap, img, pg, True))
+    prev_entries.append(lambda pg: unlock())
+    prev_slides = assemble(prev_entries)
 
     out = {}
     kinds = (("preview", prev_slides),) if preview_only else (("full", full_slides), ("preview", prev_slides))
